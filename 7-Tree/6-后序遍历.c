@@ -1,5 +1,5 @@
 /**
- * 中序遍历,递归实现
+ * 后序遍历,递归实现
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -68,19 +68,19 @@ void showElem(PtNode* elem){
 }
 
 /**
- * 中序遍历
+ * 后序遍历
  * @return
  */
-void INOrderTraverse(PtTree T){
+void PostOrderTraverse(PtTree T){
     // 条件判断
     if(T){
 
         // 访问结点的左孩子
-        INOrderTraverse(T->lchild);
+        PostOrderTraverse(T->lchild);
+        // 返回结点的右孩子
+        PostOrderTraverse(T->rchild);
         // 调用方法
         showElem(T);
-        // 返回结点的右孩子
-        INOrderTraverse(T->rchild);
     }
     // 结点为空,返回上一层
     return;
@@ -90,7 +90,7 @@ int main() {
     PtTree Tree;
     // 调用函数
     CratePtTree(&Tree);
-    printf("中序遍历: \n");
-    INOrderTraverse(Tree);
+    printf("后序遍历: \n");
+    PostOrderTraverse(Tree);
     return 0;
 }
