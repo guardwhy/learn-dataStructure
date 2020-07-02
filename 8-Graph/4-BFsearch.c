@@ -1,4 +1,10 @@
+/**
+ * 广度优先搜索
+ * @return
+ */
 #include <stdio.h>
+#include <stdlib.h>
+
 /**
  * 宏定义
  * @return
@@ -8,17 +14,30 @@
 #define InfoType char // 存储边指针变量类型
 #define VertexType int // 顶点数据类型
 
-typedef enum{false,true}bool; //定义bool型常量
+//定义bool型常量
+typedef enum{
+    false,true}bool;
 /**
  *访问标志的数组
  * @return
  */
 bool visited[MAXNUM];
 
- /**
-  * 顶点数据类型
-  * @return
+/**
+ *循环队列的顺序存储结构
+ * @return
  */
+typedef struct Queue{
+    // 数据域
+    VertexType data;
+    // 指针域
+    struct Queue* next;
+}Queue;
+
+/**
+ * 顶点数据类型
+ * @return
+*/
 typedef struct ArcCell{
     // 对于无权图,用1或0表示是否相邻.对于带权图,直接为权值。
     VRType adj;
@@ -112,11 +131,11 @@ int FirstAdjVex(MGraph G, int v){
      * 初始条件:图G存在,v是G中的某个顶点
      * 操作条件: 返回v的第一个邻接顶点的序号,若顶点在G中没有邻接顶点,则返回-1
      */
-     for(int i=0; i<G.vexNum; i++){
-         if(G.arcs[v][i].adj){
-             return i;
-         }
-     }
+    for(int i=0; i<G.vexNum; i++){
+        if(G.arcs[v][i].adj){
+            return i;
+        }
+    }
     // 寻找失败
     return -1;
 }
@@ -138,51 +157,119 @@ int NextAdjVex(MGraph G, int v, int w){
     // 寻找失败
     return -1;
 }
-
+/**
+ * 输出顶点函数
+ * @param G
+ * @param v
+ */
 void visitVex(MGraph G, int v){
     printf("%d ", G.vexs[v]);
 }
 
 /**
- * 邻接矩阵深度优先递归算法
+ * 判断队列是否为空
+ * @param Q
  * @return
  */
-void DFS(MGraph G, int v){
-    // 定义变量
-    int w;
-    visited[v] = true;
-    // 访问第v个顶点
-    visitVex(G, v);
-    // 遍历
-    for(w=FirstAdjVex(G, v); w>=0; w=NextAdjVex(G, v, w)){
-        // 判断是否被访问
-        if(!visited[w])
-            DFS(G,w);
+bool QueueEmpty(Queue *Q){
+    // 条件判断
+    if(Q->next == NULL){
+        return true;
     }
+
+    return false;
+}
+
+/**
+ * 初始化队列
+ * @param Q
+ */
+void InitQueue(Queue** Q){
+    // 分配内存
+    (*Q) = (Queue*)malloc(sizeof(Queue));
+    (*Q)->next = NULL;
+}
+
+/**
+ * 顶点元素入队列
+ * @param Q
+ * @param v
+ */
+void EnQueue(Queue** Q, VertexType v){
+    // 动态内存分配
+    Queue* elem = (Queue*)malloc(sizeof(Queue));
+    // 指向顶点
+    elem->data = v;
+    elem->next = NULL;
+    // 定义临时指针
+    Queue* temp = (*Q);
+    // 条件判断
+    while (temp->next != NULL){
+        temp = temp->next;
+    }
+    temp->next = elem;
+}
+
+/**
+ * 对头元素出队列
+ * @param Q
+ * @param s
+ */
+void DeQueue(Queue** Q, int* s){
+    (*s) = (*Q)->next->data;
+    (*Q)->next = (*Q)->next->next;
 }
 
 /**
  * 深度优先搜索
  * @return
  */
-void DFSTraverse(MGraph G){
-    //将用做标记的visit数组初始化为false
-    for(int v=0; v<G.vexNum; ++v){
-        visited[v] = false;
+void  BFSTraverse(MGraph G){
+    // 定义变量
+    int i, j;
+    // 数组初始化
+    for(i=0; i<G.vexNum; ++i){
+        visited[i] = false;
     }
-    //对于每个标记为false的顶点调用深度优先搜索函数
-    for(int v=0; v<G.vexNum; v++){
-        if(!visited[v]){
-            DFS(G, v);
+    // 定义一个队列
+    Queue* Q;
+    // 初始化队列
+    InitQueue(&Q);
+
+    // 对每个顶点做循环
+    for(i=0; i<G.vexNum; i++){
+        // 判断是否访问
+        if(!visited[i]){
+            visited[i] = true;
+            // 调用函数
+            visitVex(G, i);
+            // 将此顶点入队列
+            EnQueue(&Q, G.vexs[i]);
+            // 判断当前队列不为空
+            while (!QueueEmpty(Q)){
+                // 将队中元素出队列,赋值给j
+                DeQueue(&Q, &j);
+                j = locationVex(&G, j);
+                for(int w=FirstAdjVex(G, j); w>=0; w=NextAdjVex(G, j, w)){
+                    if(!visited[w]){
+                        // 将找到此顶点标记以访问
+                        visited[w] = true;
+                        visitVex(G, w);
+                        // 将找到的此顶点入队列
+                        EnQueue(&Q, G.vexs[w]);
+                    }
+                }
+            }
         }
     }
 }
+
 int main() {
     // 结构体变量
     MGraph G;
     // 初始化图
     CreateUDG(&G);
     // 深度优先搜索
-    DFSTraverse(G);
+    BFSTraverse(G);
     return 0;
 }

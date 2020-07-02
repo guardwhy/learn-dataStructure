@@ -16,11 +16,10 @@
  * @return
  */
 typedef enum {
-    // 有向图,有向网,无向图,无向网
-    DG,
-    DN,
-    UDG,
-    UDN
+    DG, // 有向图
+    DN, //有向网
+    UDG, // 无向图
+    UDN // 无向网
 }GraphKid;
 /**
  * 顶点数据类型
@@ -71,7 +70,7 @@ int locationVex(MGraph* G, VertexType v){
 }
 
 /**
- * 构造无向图
+ * 构造有向网
  * @param G
  */
 void CreateDN(MGraph *G) {
@@ -201,7 +200,7 @@ void CreateUDN(MGraph *G) {
     }
 }
 /**
- * 构造有向网
+ * 构造无向图
  * @param G
  */
 void CreateUDG(MGraph *G) {
