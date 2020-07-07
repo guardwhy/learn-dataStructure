@@ -1,177 +1,229 @@
 /**
- *关键路径算法实现
+ * 关键路径算法
+ * @return
  */
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
 
 /**
  * 宏定义
  * @return
  */
-#define MAXNUM 20 // 顶点数最大个数
-#define VertexType int // 顶点数据类型
+#define MAXNUM 14 // 顶点的最大个数
+#define MAXEDGE 13 // 边的数量
+#define INFINITY 65535
+typedef int Status; // 函数类型
+typedef enum{false,true}bool; //定义bool型常量
 
-// 保存弧的最早开始时间
-VertexType Ve[MAXNUM];
-// 保存弧的最晚开始时间
-VertexType Vl[MAXNUM];
+// 定义全局变量,定义时间最早和最晚时间数组
+int *ve, *vl;
+// 定义存储拓扑序列的栈元素
+int* stack2;
+// 定义指针变量
+int temp;
 
 /**
  * 边表结点
  * @return
- */
-typedef struct ArcNode{
-    int adjvex; // 存储该顶点对应的下标
-    struct ArcNode* nextarc; // 指向下一个邻接点
-    VertexType weight; // 权值
-}ArcNode;
+*/
+typedef struct EdgeNode{
+    int adjvex; // 邻接点域,存储该顶点对应的下标
+    struct EdgeNode* next; // 链域,指向下一个邻接点的指针
+    int weight; // 用于存储权值
+}EdgeNode;
 
 /**
  * 顶点表结点
  * @return
- */
+*/
 typedef struct VertexNode{
-    VertexType data; // 顶点域,存储顶点的信息
-    ArcNode* firstArc; // 指向下一条边的指针
-}VertexNode, AdjList[MAXNUM]; // 存储各链表头结点的数组
+    // 顶点的数据域
+    int data;
+    // 指向邻接点的指针
+    EdgeNode* firstEdge;
+    // 顶点入度
+    int indegree;
+}VertexNode, AdjList[MAXNUM];
 
 /**
- * 图的结构
- * @return
- */
-typedef struct{
-    AdjList vertices; // 图中顶点的数组
-    int vexNum, arcNum; // 当前顶点数和边数
-}ALGraph;
-
-/**
- * 邻接表数组下标
+ * 图的结构体类型(邻接矩阵)
  * @return
 */
-VertexType locationVex(ALGraph G, VertexType v){
-    // 条件遍历
-    for(int i=0; i< G.vexNum; i++){
-        if(G.vertices[i].data == v){
-            return i;
+typedef struct {
+    int vexs[MAXNUM]; // 顶点表
+    int arc[MAXNUM][MAXNUM]; // 邻接矩阵,可看作边表
+    int numVertexes, numEdges; // 当前的顶点数和边数
+}MGraph;
+
+/**
+ * 图的结构体类型(邻接表)
+ * @return
+*/
+typedef struct graphAdjList{
+    AdjList adjList; // 图中顶点及其各邻接点数组
+    int numVertexes, numEdges; // 记录顶点数和边
+}graphAdjList,*GraphAdjList;
+
+/**
+ * 构建图
+ * @return
+ */
+void CreateMGraph(MGraph *G){
+    // 定义变量
+    int i, j;
+    // 给顶点和边赋值
+    G->numVertexes = 13;
+    G->numEdges = 10;
+
+    /**
+     * 初始化图
+    */
+    for(i=0; i<G->numVertexes; i++){
+        G->vexs[i] = i;
+    }
+    for(i=0; i<G->numVertexes; i++){
+        for(j=0; j<G->numVertexes; j++){
+            if(i==j){
+                G->arc[i][j] = 0;
+            } else{
+                G->arc[i][j] = INFINITY;
+            }
         }
     }
-
-    // 寻找失败
-    return -1;
+    G->arc[0][1]=3;
+    G->arc[0][2]=4;
+    G->arc[1][3]=5;
+    G->arc[1][4]=6;
+    G->arc[2][3]=8;
+    G->arc[2][5]=7;
+    G->arc[3][4]=3;
+    G->arc[4][6]=9;
+    G->arc[4][7]=4;
+    G->arc[5][7]=6;
+    G->arc[6][9]=2;
+    G->arc[7][8]=5;
+    G->arc[8][9]=3;
 }
 
 /**
  * 创建邻接表
  * @return
 */
-void CreateAOE(ALGraph** G){
+void CreateALGraph(MGraph G, GraphAdjList *GL){
     // 定义变量
-    int i;
-    int begin, end, weight;
-
-    // 分配内存
-    *G = (ALGraph*)malloc(sizeof(ALGraph));
-    printf("请输入顶点数和弧的边数: \n");
-    scanf("%d,%d",&((*G)->vexNum),&((*G)->arcNum));
+    int i, j;
+    EdgeNode* p;
+    // 向内存申请空间,生成存储数组
+    *GL = (GraphAdjList)malloc(sizeof(graphAdjList));
+    (*GL)->numVertexes = G.numVertexes;
+    (*GL)->numEdges = G.numEdges;
 
     /**
      * 读入顶点信息,建立顶点表
      */
-    printf("建立顶点表: \n");
-    for(i=0; i < (*G)->vexNum; i++){
-        printf("请输入%d个顶点:\n", i);
-        //刷新缓冲区
-        fflush(stdin);
-        scanf("%d", &((*G))->vertices[i].data);
-        // 将边表置为空表
-        (*G)->vertices[i].firstArc = NULL;
+    for(i=0; i < G.numVertexes; i++){
+        (*GL)->adjList[i].indegree = 0;
+        (*GL)->adjList[i].data = G.vexs[i];
+        // 将边表设置为空表
+        (*GL)->adjList[i].firstEdge = NULL;
     }
 
     /**
-    * 建立边表
-    */
-    printf("建立边表:\n");
-    printf("请输入边(vi,vj)上的下标i，下标j和权w:\n");
-    for(i=0; i<(*G)->arcNum; i++){
-        scanf("%d,%d,%d", &begin, &end, &weight);
-
-        // 创建临时指针
-        ArcNode *p = (ArcNode*)malloc(sizeof(ArcNode));
-        // 指向下标位置
-        p->adjvex = locationVex(*(*G), end);
-        p->nextarc = NULL;
-        p->weight = weight;
-
-        int locate = locationVex(*(*G), begin);
-        p->nextarc = (*G)->vertices[locate].firstArc;
-        (*G)->vertices[locate].firstArc = p;
+     * 建立边表
+     */
+    for(i=0; i < G.numVertexes; i++){
+        for(j=0; j<G.numVertexes; j++){
+            // 条件判断
+            if(G.arc[i][j] != 0 && G.arc[i][j] < INFINITY){
+                // 分配内存
+                p = (EdgeNode*)malloc(sizeof(EdgeNode));
+                // 邻接序号
+                p->adjvex = j;
+                p->weight = G.arc[i][j];
+                // 将当前顶点上的指向的结点指针赋值给p
+                p->next = (*GL)->adjList[i].firstEdge;
+                // 将当前顶点的指针指向p
+                (*GL)->adjList[i].firstEdge = p;
+                (*GL)->adjList[j].indegree++;
+            }
+        }
     }
 }
 
 /**
- * 栈结构
+ * 拓扑排序
  * @return
 */
-typedef struct stack{
-    // 数据域
-    VertexType data;
-    // 指针域
-    struct stack* next;
-}stack;
+Status TopologicalSort(GraphAdjList GL){
+    // 定义指针变量
+    EdgeNode *p;
+    int i,k,gettop;
+    // 栈指针下标
+    int top = 0;
+    // 定义计数器,输出顶点的个数
+    int count = 0;
 
-// 定义栈指针变量
-stack* T;
+    // 建栈将入度为0的顶点入栈
+    int* stack;
+    stack = (int *)malloc(GL->numVertexes * sizeof(int));
+    for(i=0; i<GL->numVertexes; i++)
+        // 将入度为0的顶点入栈
+        if(0 == GL->adjList[i].indegree)
+            stack[++top] = i;
 
-/**
- * 初始化栈结构
- * @return
-*/
-void initStack(stack* *S){
-    (*S) = (stack*)malloc(sizeof(stack));
-    (*S)->next = NULL;
-}
+    // 定义指针下标
+    int top2 = 0;
+    // 内存分配,事件最早发生数组
+    ve = (int*)malloc(GL->numVertexes* sizeof(int ));
 
-/**
- * 判断栈是否为空
- * @return
-*/
-bool StackEmpty(stack S){
-    if(S.next == NULL){
+    // 初始拓扑序列栈
+    for(i=0; i<GL->numVertexes; i++){
+        // 数组初始化
+        ve[i] = 0;
+    }
+    stack2 = (int*)malloc(GL->numVertexes* sizeof(int ));
+    printf("拓扑排序: \t");
+
+    while (top!=0){
+        // 出栈操作
+        gettop = stack[top--];
+        // 输出顶点
+        printf("%d ->", GL->adjList[gettop].data);
+        // 统计输出顶点数
+        count++;
+        
+        // 将弹出的顶点序号压入拓扑序列的栈
+        stack2[++top2] = gettop;
+
+        // 对顶点弧表遍历
+        for(p = GL->adjList[gettop].firstEdge; p; p=p->next){
+            k = p->adjvex;
+            // 将k号顶点的邻接点的入度减1，如果减1后为0，则入栈
+            if(!(--GL->adjList[k].indegree))
+                stack[++top] = k;
+            
+            // 顶点事件最早发生时间的ve值
+            if((ve[gettop] + p->weight) > ve[k])
+                ve[k] = ve[gettop] + p->weight;
+        }
+    }
+    printf("\n");
+    if(count < GL->numVertexes){
+        return false;
+    }else{
         return true;
     }
-    return false;
 }
 
-/**
- * 进栈,插入到链表中
- * @return
-*/
-void push(stack *S, VertexType v){
-    // 定义临时指针
-    stack *p = (stack*)malloc(sizeof(stack));
-    // 存储信息
-    p->data = v;
-    p->next = NULL;
-    // 向链表中插入节点
-    p->next = S->next;
-    S->next = p;
-}
 
-/**
- * 弹栈,删除链表首元结点,释放该空间。
- * @return
-*/
-void pop(stack* S, VertexType *i){
-    // 将数据域通过地址传值给变量
-    stack *p = S->next;
-    *i = p->data;
-    S->next = S->next->next;
-    // 释放空间
-    free(p);
-}
-int main(){
-    ALGraph G;
-    CreateAOE(&G);//创建AOE网
+int main() {
+    // 结构体变量
+    MGraph G;
+    GraphAdjList GL;
+
+    // 调用函数
+    CreateMGraph(&G);
+    CreateALGraph(G, &GL);
+    printf("拓扑排序:%d",TopologicalSort(GL));
     return 0;
 }
